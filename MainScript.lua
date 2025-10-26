@@ -40,14 +40,6 @@ local userinformation = {
 	health = user.Character.Humanoid.Health
 }
 
-local assets = setmetatable({
-	['inhaler/assets/inhaler.png'] = 'https://github.com/zulphdeveloper/Inhaler/blob/main/inhaler.png?raw=true'
-}, {
-	__index = function(i, missingasset)
-		return 'Asset does not exist: '..missingasset or warn('Asset does not exist: '..missingasset)
-	end
-})
-
 local inhalerTween = function(instance, duration, goal)
 	if instance and duration and goal then
 		local tweenSuccess, tweenResults = pcall(function()
@@ -79,18 +71,6 @@ local inhalerCleanup = function()
 	end
 end
 
-local getasset = function(asset)
-	if asset ~= '' then
-		local assetSuccess, i = pcall(function()
-			getcustomasset(assets[asset])
-		end)
-
-		if not assetSuccess then
-			return asset
-		end
-	end
-end
-
 local createfile = function(path, contents)
 	if not isfile(tostring(path)) and path ~= '' and contents ~= '' then
 		print(tostring(path))
@@ -105,8 +85,6 @@ local createfolder = function(path)
 	end
 end
 
-createfolder('inhaler')
-
 local downloadTodos = {
 	['folders'] = {
 		'inhaler/assets',
@@ -116,6 +94,7 @@ local downloadTodos = {
 	},
 	['files'] = {
 		['inhaler/assets/inhaler.png'] = game:HttpGet('https://github.com/zulphdeveloper/Inhaler/blob/main/inhaler.png?raw=true', true),
+		['inhaler/assets/bgsplash.png'] = game:HttpGet('https://github.com/zulphdeveloper/Inhaler/blob/main/bgsplash.png?raw=true', true),
 		['inhaler/assets/inhalerversion.png'] = game:HttpGet('https://github.com/zulphdeveloper/Inhaler/blob/main/inhalerversion.png?raw=true', true),
 		['inhaler/github/readme.md'] = game:HttpGet('https://github.com/zulphdeveloper/Inhaler/raw/refs/heads/main/readme.md', true),
 		['inhaler/MainScript.lua'] = game:HttpGet('https://github.com/zulphdeveloper/Inhaler/raw/refs/heads/main/MainScript.lua', true),
@@ -123,9 +102,61 @@ local downloadTodos = {
 	}
 }
 
--- my boys =)
+local function getasset(asset)
+    if not asset or asset == "" then
+        return nil
+    end
+
+    local success, result = pcall(function()
+        return getcustomasset(asset)
+    end)
+
+    if success and result then
+        return result
+    end
+
+    local contents = downloadTodos and downloadTodos.files and downloadTodos.files[asset]
+
+    if contents then
+        pcall(function()
+            local parent = tostring(asset):match("^(.+)/[^/]+$")
+
+            if parent and parent ~= "" and not isfolder(parent) then
+                local parts = {}
+
+                for part in parent:gmatch("[^/]+") do 
+					table.insert(parts, part) 
+				end
+
+                local path = ""
+
+                for index, part in ipairs(parts) do
+                    path = (index == 1) and part or (path .. "/" .. part)
+                    if not isfolder(path) then
+                        makefolder(path)
+                    end
+                end
+            end
+
+            writefile(asset, tostring(contents))
+        end)
+
+        local ok2, result2 = pcall(function()
+            return getcustomasset(asset)
+        end)
+
+        if ok2 and result2 then
+            return result2
+        end
+    end
+
+    return asset
+end
+
 
 inhalerCleanup()
+
+createfolder('inhaler')
 
 local Inhaler = Instance.new('Folder')
 Inhaler.Name = 'Inhaler'
@@ -154,7 +185,6 @@ local loadInstaller = function()
 	local Installer = Instance.new("ScreenGui")
 	local InstallerFrame = Instance.new("Frame")
 	local Corner = Instance.new("UICorner")
-	local Shine = Instance.new("UIGradient")
 	local BackgroundSplash = Instance.new("ImageLabel")
 	local BackgroundSplash2 = Instance.new("ImageLabel")
 	local Stroke = Instance.new("UIStroke")
@@ -180,7 +210,7 @@ local loadInstaller = function()
 	InstallerFrame.Name = "InstallerFrame"
 	InstallerFrame.Parent = Installer
 	InstallerFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-	InstallerFrame.BackgroundColor3 = Color3.fromRGB(144, 144, 144)
+	InstallerFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 	InstallerFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	InstallerFrame.BorderSizePixel = 0
 	InstallerFrame.ClipsDescendants = true
@@ -207,12 +237,7 @@ local loadInstaller = function()
             userInput.InputChanged:Connect(function(moveInput)
                 if moveInput == input and uidrag then
                     local delta = moveInput.Position - startdrag
-                    InstallerFrame.Position = UDim2.new(
-                        startposition.X.Scale,
-                        startposition.X.Offset + delta.X,
-                        startposition.Y.Scale,
-                        startposition.Y.Offset + delta.Y
-                    )
+                    InstallerFrame.Position = UDim2.new(startposition.X.Scale, startposition.X.Offset + delta.X, startposition.Y.Scale, startposition.Y.Offset + delta.Y)
                 end
             end)
         end
@@ -222,11 +247,6 @@ local loadInstaller = function()
 	Corner.Name = "Corner"
 	Corner.Parent = InstallerFrame
 
-	Shine.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(26, 26, 26)), ColorSequenceKeypoint.new(0.49, Color3.fromRGB(59, 59, 59)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(26, 26, 26))}
-	Shine.Rotation = -50
-	Shine.Name = "Shine"
-	Shine.Parent = InstallerFrame
-
 	BackgroundSplash.Name = "BackgroundSplash"
 	BackgroundSplash.Parent = InstallerFrame
 	BackgroundSplash.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -234,20 +254,9 @@ local loadInstaller = function()
 	BackgroundSplash.BorderColor3 = Color3.fromRGB(0, 0, 0)
 	BackgroundSplash.BorderSizePixel = 0
 	BackgroundSplash.Position = UDim2.new(-0.589999974, 0, -1.648, 0)
-	BackgroundSplash.Size = UDim2.new(0, 686, 0, 622)
-	BackgroundSplash.Image = "rbxassetid://11427370337"
+	BackgroundSplash.Size = UDim2.new(0, 700, 0, 800)
+	BackgroundSplash.Image = getasset('inhaler/assets/bgsplash.png')
 	BackgroundSplash.ImageTransparency = 0.985
-
-	BackgroundSplash2.Name = "BackgroundSplash2"
-	BackgroundSplash2.Parent = InstallerFrame
-	BackgroundSplash2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	BackgroundSplash2.BackgroundTransparency = 1.000
-	BackgroundSplash2.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	BackgroundSplash2.BorderSizePixel = 0
-	BackgroundSplash2.Position = UDim2.new(-0.135000005, 0, 0.228, 0)
-	BackgroundSplash2.Size = UDim2.new(0, 686, 0, 622)
-	BackgroundSplash2.Image = "rbxassetid://11427370337"
-	BackgroundSplash2.ImageTransparency = 0.985
 
 	Stroke.Name = "Stroke"
 	Stroke.Parent = InstallerFrame
@@ -264,7 +273,7 @@ local loadInstaller = function()
 	Inhalerlogo.BorderSizePixel = 0
 	Inhalerlogo.Position = UDim2.new(0.5, 0,0.4, 0)
 	Inhalerlogo.Size = UDim2.new(0.25, 0,0.1, 0)
-	Inhalerlogo.Image = "rbxassetid://119449133722711"
+	Inhalerlogo.Image = getasset('inhaler/assets/inhaler.png')
 
 	PercentBar.Name = "PercentBar"
 	PercentBar.Parent = InstallerFrame
@@ -301,6 +310,7 @@ local loadInstaller = function()
 	GreenCorner.Parent = PercentGreen
 
 	slide = 0.3
+	progressing = 30
 
 	function makeProgress(amount)
 		if amount ~= '' then
@@ -318,14 +328,26 @@ local loadInstaller = function()
 	for _, folder in downloadTodos['folders'] do
 		task.wait(math.random(0.03, 0.1))
 		createfolder(folder)
-		makeProgress(math.random(20,50))
+		task.spawn(function()
+			repeat
+				makeProgress(progressing)
+				task.wait()
+			until isfolder(folder)
+		end)
 	end
 
 	for file, contents in downloadTodos['files'] do
 		createfile(file, contents)
+		task.spawn(function()
+			repeat
+				makeProgress(progressing)
+				task.wait()
+			until isfile(file)
+		end)
 		task.wait(math.random(0.03, 0.1))
-		makeProgress(math.random(20,50))
 	end
+
+	task.wait(0.3)
 
 	finish()
 end
